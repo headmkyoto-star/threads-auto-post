@@ -1,0 +1,53 @@
+name: Threads All Accounts Auto Post
+
+on:
+  schedule:
+    - cron: '0 22 * * *'
+    - cron: '0 1 * * *'
+    - cron: '0 4 * * *'
+    - cron: '0 8 * * *'
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  post-yababa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Post @yababa04
+        env:
+          YABABA_ACCESS_TOKEN: ${{ secrets.YABABA_ACCESS_TOKEN }}
+          YABABA_USER_ID: ${{ secrets.YABABA_USER_ID }}
+        run: python post_yababa.py
+
+  post-saki:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Post @saki_head.m.kyoto
+        env:
+          SAKI_ACCESS_TOKEN: ${{ secrets.SAKI_ACCESS_TOKEN }}
+          SAKI_USER_ID: ${{ secrets.SAKI_USER_ID }}
+        run: python post_saki.py
+
+  post-honoka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Post @honoka_mint
+        env:
+          HONOKA_ACCESS_TOKEN: ${{ secrets.HONOKA_ACCESS_TOKEN }}
+          HONOKA_USER_ID: ${{ secrets.HONOKA_USER_ID }}
+        run: python post_honoka.py
