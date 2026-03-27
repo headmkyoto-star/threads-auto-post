@@ -1,14 +1,9 @@
-# -*- coding: utf-8 -*-
-import sys, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
-import anthropic
 import requests
 import os
 import random
 import time
 import datetime
+import json
 
 ACCESS_TOKEN = os.environ.get("THREADS_ACCESS_TOKEN", "")
 USER_ID = "27185017111098955"
@@ -97,26 +92,37 @@ def get_image_url():
             chosen = random.choice(images).replace(" ", "%20")
             return GITHUB_RAW_BASE + chosen
     except Exception as e:
-        print("画像取得エラー: " + str(e))
+        pass
     return None
 
 def generate_post():
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     time_context = get_time_context()
     is_promo = random.random() < 0.2
     if is_promo:
         theme = random.choice(PROMO_THEMES)
-        prompt = "あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。\nThreadsに投稿する文章を1つ作ってください。\n\n今の時間帯：" + time_context + "\n今回のテーマ：「" + theme + "」\n\nルール：\n- 投稿文のみ出力（前置きや説明は不要）\n- 必ず文と文の間で改行する（1文ごとに改行）\n- 各文か段落に絵文字を入れる\n- 70分3980円を自然に含める\n- ハッシュタグは絶対に使わない\n- 150文字以内\n"
     else:
         theme = random.choice(DAILY_THEMES)
-        prompt = "あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。\nThreadsに投稿する文章を1つ作ってください。\n\n今の時間帯：" + time_context + "\n今回のテーマ：「" + theme + "」\n\nルール：\n- 投稿文のみ出力（前置きや説明は不要）\n- 必ず文と文の間で改行する（1文ごとに改行）\n- 各文か段落に絵文字を入れる\n- 営業っぽくしない・自然な日常感で\n- ハッシュタグは絶対に使わない\n- 150文字以内\n"
 
-    message = client.messages.create(
-        model="claude-opus-4-6",
-        max_tokens=300,
-        messages=[{"role": "user", "content": prompt}]
+    prompt_text = "あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。Threadsに投稿する文章を1つ作ってください。今の時間帯：" + time_context + " 今回のテーマ：「" + theme + "」 ルール：投稿文のみ出力。必ず文と文の間で改行。各文に絵文字を入れる。営業っぽくしない。ハッシュタグ不要。150文字以内。"
+
+    headers = {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+    }
+    payload = {
+        "model": "claude-opus-4-6",
+        "max_tokens": 300,
+        "messages": [{"role": "user", "content": prompt_text}]
+    }
+    r = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers=headers,
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        timeout=30
     )
-    return message.content[0].text.strip()
+    result = r.json()
+    return result["content"][0]["text"].strip()
 
 def create_thread(text, image_url=None):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads"
@@ -124,48 +130,37 @@ def create_thread(text, image_url=None):
         params = {"media_type": "IMAGE", "image_url": image_url, "text": text, "access_token": ACCESS_TOKEN}
     else:
         params = {"media_type": "TEXT", "text": text, "access_token": ACCESS_TOKEN}
-    response = requests.post(url, params=params, timeout=30)
-    return response.json()
+    r = requests.post(url, params=params, timeout=30)
+    return r.json()
 
 def publish_thread(creation_id):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads_publish"
     params = {"creation_id": creation_id, "access_token": ACCESS_TOKEN}
-    response = requests.post(url, params=params, timeout=30)
-    return response.json()
+    r = requests.post(url, params=params, timeout=30)
+    return r.json()
 
 if __name__ == "__main__":
-    print("投稿生成中...")
     post_text = generate_post()
-    print("生成完了")
-    print("---")
-    print(post_text)
-    print("---")
+    print("POST_GENERATED")
 
     image_url = get_image_url()
-    if image_url:
-        print("画像URL取得: OK")
-
     result = create_thread(post_text, image_url)
-    print("スレッド作成結果: " + str(result))
 
     if "id" in result:
-        print("30秒待機中...")
         time.sleep(30)
-        publish_result = publish_thread(result["id"])
-        print("投稿結果: " + str(publish_result))
-        if publish_result.get("id"):
-            print("SUCCESS: 投稿完了")
+        pub = publish_thread(result["id"])
+        if pub.get("id"):
+            print("SUCCESS")
         else:
-            print("FAILED: 投稿失敗")
+            print("PUBLISH_FAILED: " + str(pub))
     else:
-        print("ERROR: スレッド作成失敗")
         if image_url:
-            print("画像なしで再試行中...")
             result2 = create_thread(post_text, None)
             if "id" in result2:
                 time.sleep(30)
-                r2 = publish_thread(result2["id"])
-                if r2.get("id"):
-                    print("SUCCESS: テキストのみで投稿完了")
-                else:
-                    print("FAILED: 再試行も失敗: " + str(r2))
+                pub2 = publish_thread(result2["id"])
+                print("SUCCESS_TEXT_ONLY" if pub2.get("id") else "FAILED: " + str(pub2))
+            else:
+                print("THREAD_CREATE_FAILED: " + str(result2))
+        else:
+            print("THREAD_CREATE_FAILED: " + str(result))
