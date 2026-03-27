@@ -1,24 +1,32 @@
-name: Threads Auto Post (Store)
+name: スレッド自動投稿（ストア）
 
 on:
   schedule:
-    - cron: '0 22 * * *'
-    - cron: '0 1 * * *'
-    - cron: '0 4 * * *'
-    - cron: '0 8 * * *'
-    - cron: '0 12 * * *'
+    - cron: '0 22 * * *'  # JST 7:00
+    - cron: '0 0 * * *'   # JST 9:00
+    - cron: '0 2 * * *'   # JST 11:00
+    - cron: '0 4 * * *'   # JST 13:00
+    - cron: '0 6 * * *'   # JST 15:00
+    - cron: '0 8 * * *'   # JST 17:00
+    - cron: '0 10 * * *'  # JST 19:00
+    - cron: '0 12 * * *'  # JST 21:00
+    - cron: '0 14 * * *'  # JST 23:00
+    - cron: '0 16 * * *'  # JST 1:00
   workflow_dispatch:
 
 jobs:
-  post-to-threads:
+  post:
     runs-on: ubuntu-latest
-    env:
-      THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    name: スレッドへの投稿
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-      - run: pip install requests anthropic
-      - run: python post_to_threads.py
+      - name: anthropic の pip インストールリクエストを実行してください
+        run: pip install requests anthropic
+      - name: python post_to_threads.py を実行してください
+        env:
+          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python post_to_threads.py
