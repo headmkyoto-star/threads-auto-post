@@ -1,5 +1,8 @@
-import sys
-sys.stdout.reconfigure(encoding="utf-8")
+# -*- coding: utf-8 -*-
+import sys, io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
 import anthropic
 import requests
 import os
@@ -87,14 +90,14 @@ def get_time_context():
 
 def get_image_url():
     try:
-        r = requests.get(GITHUB_API_IMAGES)
+        r = requests.get(GITHUB_API_IMAGES, timeout=10)
         files = r.json()
         images = [f["name"] for f in files if f["name"].lower().endswith((".jpg", ".jpeg", ".png"))]
         if images:
-            chosen = random.choice(images).replace(" ", "_")
+            chosen = random.choice(images).replace(" ", "%20")
             return GITHUB_RAW_BASE + chosen
-    except:
-        pass
+    except Exception as e:
+        print("画像取得エラー: " + str(e))
     return None
 
 def generate_post():
@@ -103,36 +106,11 @@ def generate_post():
     is_promo = random.random() < 0.2
     if is_promo:
         theme = random.choice(PROMO_THEMES)
-        prompt = f"""あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。
-Threadsに投稿する文章を1つ作ってください。
-
-今の時間帯：{time_context}
-今回のテーマ：「{theme}」
-
-ルール：
-- 投稿文のみ出力（前置きや説明は不要）
-- 必ず文と文の間で改行する（1文ごとに改行）
-- 各文か段落に絵文字を入れる（🌿✨💆‍♀️🍃🌸😌🫧など）
-- 70分3980円を自然に含める
-- ハッシュタグは絶対に使わない
-- 150文字以内
-"""
+        prompt = "あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。\nThreadsに投稿する文章を1つ作ってください。\n\n今の時間帯：" + time_context + "\n今回のテーマ：「" + theme + "」\n\nルール：\n- 投稿文のみ出力（前置きや説明は不要）\n- 必ず文と文の間で改行する（1文ごとに改行）\n- 各文か段落に絵文字を入れる\n- 70分3980円を自然に含める\n- ハッシュタグは絶対に使わない\n- 150文字以内\n"
     else:
         theme = random.choice(DAILY_THEMES)
-        prompt = f"""あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。
-Threadsに投稿する文章を1つ作ってください。
+        prompt = "あなたはドライヘッドスパ専門サロン「head.m.kyoto」のセラピストです。\nThreadsに投稿する文章を1つ作ってください。\n\n今の時間帯：" + time_context + "\n今回のテーマ：「" + theme + "」\n\nルール：\n- 投稿文のみ出力（前置きや説明は不要）\n- 必ず文と文の間で改行する（1文ごとに改行）\n- 各文か段落に絵文字を入れる\n- 営業っぽくしない・自然な日常感で\n- ハッシュタグは絶対に使わない\n- 150文字以内\n"
 
-今の時間帯：{time_context}
-今回のテーマ：「{theme}」
-
-ルール：
-- 投稿文のみ出力（前置きや説明は不要）
-- 必ず文と文の間で改行する（1文ごとに改行）
-- 各文か段落に絵文字を入れる（🌿✨💆‍♀️🍃🌸😌🫧など）
-- 営業っぽくしない・自然な日常感で
-- ハッシュタグは絶対に使わない
-- 150文字以内
-"""
     message = client.messages.create(
         model="claude-opus-4-6",
         max_tokens=300,
@@ -141,38 +119,53 @@ Threadsに投稿する文章を1つ作ってください。
     return message.content[0].text.strip()
 
 def create_thread(text, image_url=None):
-    url = f"https://graph.threads.net/v1.0/{USER_ID}/threads"
+    url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads"
     if image_url:
         params = {"media_type": "IMAGE", "image_url": image_url, "text": text, "access_token": ACCESS_TOKEN}
     else:
         params = {"media_type": "TEXT", "text": text, "access_token": ACCESS_TOKEN}
-    response = requests.post(url, params=params)
+    response = requests.post(url, params=params, timeout=30)
     return response.json()
 
 def publish_thread(creation_id):
-    url = f"https://graph.threads.net/v1.0/{USER_ID}/threads_publish"
+    url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads_publish"
     params = {"creation_id": creation_id, "access_token": ACCESS_TOKEN}
-    response = requests.post(url, params=params)
+    response = requests.post(url, params=params, timeout=30)
     return response.json()
 
 if __name__ == "__main__":
+    print("投稿生成中...")
     post_text = generate_post()
-    print(f"生成された投稿:\n{post_text}\n")
+    print("生成完了")
+    print("---")
+    print(post_text)
+    print("---")
+
     image_url = get_image_url()
     if image_url:
-        print(f"使用画像: {image_url}\n")
+        print("画像URL取得: OK")
+
     result = create_thread(post_text, image_url)
-    print(f"スレッド作成: {result}")
+    print("スレッド作成結果: " + str(result))
+
     if "id" in result:
+        print("30秒待機中...")
         time.sleep(30)
         publish_result = publish_thread(result["id"])
-        print("✅ 投稿成功！" if publish_result.get("id") else f"❌ 投稿失敗: {publish_result}")
+        print("投稿結果: " + str(publish_result))
+        if publish_result.get("id"):
+            print("SUCCESS: 投稿完了")
+        else:
+            print("FAILED: 投稿失敗")
     else:
-        print("❌ スレッド作成失敗")
+        print("ERROR: スレッド作成失敗")
         if image_url:
             print("画像なしで再試行中...")
             result2 = create_thread(post_text, None)
             if "id" in result2:
                 time.sleep(30)
                 r2 = publish_thread(result2["id"])
-                print("✅ テキストのみで投稿成功！" if r2.get("id") else f"❌ 再試行も失敗: {r2}")
+                if r2.get("id"):
+                    print("SUCCESS: テキストのみで投稿完了")
+                else:
+                    print("FAILED: 再試行も失敗: " + str(r2))
