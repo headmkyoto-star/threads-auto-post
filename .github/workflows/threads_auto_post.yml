@@ -1,4 +1,4 @@
-name: Threads Auto Post
+name: Threads Auto Post (Store)
 
 on:
   schedule:
@@ -10,22 +10,15 @@ on:
   workflow_dispatch:
 
 jobs:
-  post:
+  post-to-threads:
     runs-on: ubuntu-latest
+    env:
+      THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install requests
-
-      - name: Post to Threads
-        env:
-          THREADS_ACCESS_TOKEN: ${{ secrets.THREADS_ACCESS_TOKEN }}
-        run: |
-          sed -i "s/THREADS_ACCESS_TOKEN/$THREADS_ACCESS_TOKEN/" post_to_threads.py
-          python post_to_threads.py
+          python-version: '3.10'
+      - run: pip install requests anthropic
+      - run: python post_to_threads.py
