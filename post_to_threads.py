@@ -71,7 +71,7 @@ def generate_post():
     prompt_text = "head.m.kyotoのセラピストとしてThreadsに投稿する文を1つ書いてください。テーマ:「" + theme + "」時間帯:" + time_ctx + " ルール:投稿文のみ出力。文ごとに改行。各文に絵文字。ハッシュタグなし。150文字以内。"
 
     payload = {
-        "model": "claude-opus-4-6",
+        "model": "claude-haiku-4-5-20251001",
         "max_tokens": 300,
         "messages": [{"role": "user", "content": prompt_text}]
     }
