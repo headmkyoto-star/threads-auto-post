@@ -68,7 +68,10 @@ def generate_post():
     theme = random.choice(PROMO_THEMES if is_promo else DAILY_THEMES)
     time_ctx = get_time_context()
 
-    prompt_text = "ヘッドミント京都祇園店のセラピストとしてThreadsに投稿する文を1つ書いてください。テーマ:「" + theme + "」時間帯:" + time_ctx + " ルール:投稿文のみ出力。文ごとに改行。各文に絵文字。ハッシュタグなし。150文字以内。"
+    if is_promo:
+        prompt_text = "ヘッドミント京都祇園店のセラピストとしてThreadsに投稿する文を1つ書いてください。テーマ:「" + theme + "」時間帯:" + time_ctx + " ルール:投稿文のみ出力。文ごとに改行。各文に絵文字。ハッシュタグなし。150文字以内。価格は必ず「70分3,980円」と明記すること。「完全個室」とは絶対に書かないこと。"
+    else:
+        prompt_text = "ヘッドミント京都祇園店のセラピストとしてThreadsに投稿する文を1つ書いてください。テーマ:「" + theme + "」時間帯:" + time_ctx + " ルール:投稿文のみ出力。文ごとに改行。各文に絵文字。ハッシュタグなし。150文字以内。「完全個室」とは絶対に書かないこと。"
 
     payload = {
         "model": "claude-haiku-4-5-20251001",
