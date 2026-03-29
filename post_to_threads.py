@@ -42,13 +42,6 @@ PROMO_THEMES = [
     "眼精疲労・頭痛が続く方への提案","70分3980円のお得さを伝える","初めての方への安心感を伝える",
 ]
 
-def get_time_context():
-    hour = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=9))).hour
-    if 5 <= hour < 10: return "asa"
-    elif 10 <= hour < 14: return "hiru"
-    elif 14 <= hour < 18: return "yugata"
-    else: return "yoru"
-
 def get_image_url():
     try:
         r = requests.get(GITHUB_API_IMAGES, timeout=10)
@@ -66,7 +59,6 @@ def generate_post():
 
     is_promo = random.random() < 2/7
     theme = random.choice(PROMO_THEMES if is_promo else DAILY_THEMES)
-    time_ctx = get_time_context()
 
     if is_promo:
         prompt_text = """ヘッドミント京都祇園店で働く20代前半のセラピストとして、Threadsに投稿する短い文を書いてください。
@@ -103,6 +95,24 @@ def generate_post():
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし
 ・投稿文だけ出力"""
+
+    response = requests.post(
+        "https://api.anthropic.com/v1/messages",
+        headers={
+            "x-api-key": ANTHROPIC_API_KEY,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        },
+        json={
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 300,
+            "messages": [{"role": "user", "content": prompt_text}]
+        },
+        timeout=30
+    )
+    data = response.json()
+    return data["content"][0]["text"].strip()
+
 def create_thread(text, image_url=None):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads"
     params = {"media_type": "IMAGE" if image_url else "TEXT", "text": text, "access_token": ACCESS_TOKEN}
