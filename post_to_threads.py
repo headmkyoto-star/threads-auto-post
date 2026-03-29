@@ -57,7 +57,7 @@ def generate_post():
     key_preview = ANTHROPIC_API_KEY[:20] if ANTHROPIC_API_KEY else "EMPTY"
     print("API_KEY_PREVIEW:" + key_preview)
 
-    is_promo = True  # TEMP TEST
+    is_promo = random.random() < 2/7
     theme = random.choice(PROMO_THEMES if is_promo else DAILY_THEMES)
 
     if is_promo:
@@ -77,6 +77,7 @@ def generate_post():
 ・朝/昼/夕/夜/何時など時間に関する表現は一切使わない
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし
+・文と文の間は改行する（1文ごとに改行）
 ・投稿文だけ出力"""
     else:
         prompt_text = """ヘッドミント京都祇園店で働く20代前半のセラピストとして、Threadsに投稿する短い文を書いてください。
@@ -94,6 +95,7 @@ def generate_post():
 ・朝/昼/夕/夜/何時など時間に関する表現は一切使わない
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし
+・文と文の間は改行する（1文ごとに改行）
 ・投稿文だけ出力"""
 
     response = requests.post(
