@@ -57,7 +57,7 @@ def generate_post():
     key_preview = ANTHROPIC_API_KEY[:20] if ANTHROPIC_API_KEY else "EMPTY"
     print("API_KEY_PREVIEW:" + key_preview)
 
-    is_promo = random.random() < 2/7
+    is_promo = True  # TEMP TEST
     theme = random.choice(PROMO_THEMES if is_promo else DAILY_THEMES)
 
     if is_promo:
