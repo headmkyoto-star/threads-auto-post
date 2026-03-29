@@ -2,16 +2,13 @@ name: Threads Auto Post
 
 on:
   schedule:
-    - cron: "0 22 * * *"
-    - cron: "0 0 * * *"
-    - cron: "0 2 * * *"
-    - cron: "0 4 * * *"
-    - cron: "0 6 * * *"
-    - cron: "0 8 * * *"
-    - cron: "0 10 * * *"
-    - cron: "0 12 * * *"
-    - cron: "0 14 * * *"
-    - cron: "0 16 * * *"
+    - cron: "0 0 * * *"   # 9:00 JST
+    - cron: "0 2 * * *"   # 11:00 JST
+    - cron: "0 4 * * *"   # 13:00 JST
+    - cron: "0 6 * * *"   # 15:00 JST
+    - cron: "0 8 * * *"   # 17:00 JST
+    - cron: "0 10 * * *"  # 19:00 JST
+    - cron: "0 12 * * *"  # 21:00 JST
   workflow_dispatch:
 
 jobs:
