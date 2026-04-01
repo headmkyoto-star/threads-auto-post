@@ -68,10 +68,28 @@ def generate_post():
     key_preview = ANTHROPIC_API_KEY[:20] if ANTHROPIC_API_KEY else "EMPTY"
     print("API_KEY_PREVIEW:" + key_preview)
 
-    is_promo = random.random() < 2/7
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    hour = datetime.datetime.now(jst).hour
     theme = random.choice(DAILY_THEMES)
 
-    if is_promo:
+    def call_claude(prompt, max_tokens=100):
+        resp = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "x-api-key": ANTHROPIC_API_KEY,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            },
+            json={
+                "model": "claude-haiku-4-5-20251001",
+                "max_tokens": max_tokens,
+                "messages": [{"role": "user", "content": prompt}]
+            },
+            timeout=30
+        )
+        return resp.json()["content"][0]["text"].strip()
+
+    if hour == 9:
         prompt_text = """ヘッドミント京都祇園店のセラピストとして、以下の投稿の続きに追加する一言を書いてください。
 
 【投稿の書き出し（固定）】
@@ -88,24 +106,25 @@ def generate_post():
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし
 ・追加する一言だけ出力（書き出しは繰り返さない）"""
+        return PROMO_OPENING_A + "\n" + call_claude(prompt_text)
 
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            },
-            json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 100,
-                "messages": [{"role": "user", "content": prompt_text}]
-            },
-            timeout=30
-        )
-        data = response.json()
-        last_line = data["content"][0]["text"].strip()
-        return PROMO_OPENING + "\n" + last_line
+    elif hour == 17:
+        prompt_text = """ヘッドミント京都祇園店のセラピストとして、以下の投稿の続きに追加する一言を書いてください。
+
+【投稿の書き出し（固定）】
+京都祇園でドライヘッドスパ受けたい方いますか☺️？
+70分3,980円🌿
+
+【追加する一言のルール】
+・1文だけ（短く！）
+・来たくなる・コメントしたくなる問いかけか、背中を押す一言
+・絵文字は🩷🫶🥹🌸✨🫧☺️💗🤍🫰など可愛い系のみ（0〜1個）
+・「。」「、」は使わない
+・時間に関する表現は一切使わない
+・「完全個室」「ヘッドセラピー」は使わない
+・ハッシュタグなし
+・追加する一言だけ出力（書き出しは繰り返さない）"""
+        return PROMO_OPENING_B + "\n" + call_claude(prompt_text)
 
     else:
         season = get_season()
@@ -128,22 +147,7 @@ def generate_post():
 ・文と文の間は改行する（1文ごとに改行）
 ・投稿文だけ出力"""
 
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "x-api-key": ANTHROPIC_API_KEY,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json"
-            },
-            json={
-                "model": "claude-haiku-4-5-20251001",
-                "max_tokens": 300,
-                "messages": [{"role": "user", "content": prompt_text}]
-            },
-            timeout=30
-        )
-        data = response.json()
-        return data["content"][0]["text"].strip()
+        return call_claude(prompt_text, max_tokens=300)
 
 def create_thread(text, image_url=None):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads"
