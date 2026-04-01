@@ -42,6 +42,17 @@ PROMO_OPENING = """京都にいるよ〜って方🙋\u200d♀️✨
 祇園でドライヘッドスパいかがですか💆\u200d♀️💗
 70分コース3,980円🫶🌿"""
 
+def get_season():
+    month = datetime.date.today().month
+    if month in [3, 4, 5]:
+        return "春"
+    elif month in [6, 7, 8]:
+        return "夏"
+    elif month in [9, 10, 11]:
+        return "秋"
+    else:
+        return "冬"
+
 def get_image_url():
     try:
         r = requests.get(GITHUB_API_IMAGES, timeout=10)
@@ -97,9 +108,10 @@ def generate_post():
         return PROMO_OPENING + "\n" + last_line
 
     else:
-        prompt_text = """ヘッドミント京都祇園店で働く20代前半のセラピストとして、Threadsに投稿する短い文を書いてください。
+        season = get_season()
+        prompt_text = f"""ヘッドミント京都祇園店で働く20代前半のセラピストとして、Threadsに投稿する短い文を書いてください。
 
-テーマ:「""" + theme + """」
+テーマ:「{theme}」
 
 【絶対に守るルール】
 ・全体で80文字以内（短く！長くしない）
@@ -110,6 +122,7 @@ def generate_post():
 ・絵文字は🩷🫶🥹🌸✨🫧☺️💗🤍🫰など可愛い系のみ（1〜2個）
 ・「。」「、」は使わない
 ・朝/昼/夕/夜/何時など時間に関する表現は一切使わない
+・現在の季節は「{season}」です。季節に関する表現を使う場合は必ず{season}に合わせる（例：春なら桜・暖かい、夏なら暑い・蒸し暑い、秋なら涼しい・紅葉、冬なら寒い・冷える）
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし
 ・文と文の間は改行する（1文ごとに改行）
