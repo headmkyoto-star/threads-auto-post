@@ -38,9 +38,12 @@ DAILY_THEMES = [
     "お客様から教えてもらったお得情報や話題","ふと立ち止まって感じた感謝のきもち",
 ]
 
-PROMO_OPENING = """京都にいるよ〜って方🙋\u200d♀️✨
+PROMO_OPENING_A = """京都にいるよ〜って方🙋\u200d♀️
 祇園でドライヘッドスパいかがですか💆\u200d♀️💗
 70分コース3,980円🫶🌿"""
+
+PROMO_OPENING_B = """京都祇園でドライヘッドスパ受けたい方いますか☺️？
+70分3,980円🌿"""
 
 def get_season():
     month = datetime.date.today().month
