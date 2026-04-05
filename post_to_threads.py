@@ -142,7 +142,8 @@ def generate_post():
 ・真面目すぎない ちょっとゆるくてOK
 ・「わかる～」「それな！」って思わせる共感か、くすっと笑える内容にする
 ・最後はコメントしたくなる問いかけで終わる
-・絵文字は🩷🫶🥹🌸✨🫧☺️💗🤍🫰など可愛い系のみ（2〜3個）
+・絵文字は🩷🫶🥹🌸✨🫧☺️💗🤍🫰など可愛い系を使う
+・各文の末尾には必ず絵文字をつける（文ごとに1個）
 ・「。」「、」は使わない
 ・朝/昼/夕/夜/何時など時間に関する表現は一切使わない
 ・季節に関する表現は基本的に使わない。どうしても使う場合のみ現在の季節「{season}」に合わせる
@@ -160,6 +161,19 @@ def create_thread(text, image_url=None):
         params["image_url"] = image_url
     return requests.post(url, params=params, timeout=30).json()
 
+def check_container_status(creation_id):
+    url = "https://graph.threads.net/v1.0/" + creation_id
+    for _ in range(10):
+        r = requests.get(url, params={"fields": "status,error_code", "access_token": ACCESS_TOKEN}, timeout=10).json()
+        status = r.get("status", "")
+        if status == "FINISHED":
+            return True
+        if status == "ERROR":
+            print("CONTAINER_ERROR:" + str(r.get("error_code")))
+            return False
+        time.sleep(5)
+    return False
+
 def publish_thread(creation_id):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads_publish"
     return requests.post(url, params={"creation_id": creation_id, "access_token": ACCESS_TOKEN}, timeout=30).json()
@@ -170,25 +184,29 @@ if __name__ == "__main__":
     image_url = get_image_url()
     result = create_thread(post_text, image_url)
     if "id" in result:
-        time.sleep(30)
-        pub = publish_thread(result["id"])
-        print("SUCCESS" if pub.get("id") else "PUBLISH_FAILED:" + str(pub))
-    elif image_url:
-        # 画像付きが失敗→もう1回リトライ
+        container_id = result["id"]
+        if image_url:
+            # 画像の読み込みが完了するまで待つ
+            ready = check_container_status(container_id)
+            if not ready:
+                # 画像NGなのでテキストのみで再作成
+                result = create_thread(post_text, None)
+                if "id" not in result:
+                    print("CREATE_FAILED:" + str(result))
+                    exit(1)
+                container_id = result["id"]
         time.sleep(5)
-        result2 = create_thread(post_text, image_url)
-        if "id" in result2:
-            time.sleep(30)
-            pub2 = publish_thread(result2["id"])
-            print("SUCCESS" if pub2.get("id") else "PUBLISH_FAILED2:" + str(pub2))
-        else:
-            # それでも失敗→テキストのみ
-            result3 = create_thread(post_text, None)
-            if "id" in result3:
-                time.sleep(30)
-                pub3 = publish_thread(result3["id"])
-                print("SUCCESS_TEXT_ONLY" if pub3.get("id") else "FAILED:" + str(pub3))
-            else:
-                print("CREATE_FAILED:" + str(result3))
+        pub = publish_thread(container_id)
+        print("SUCCESS" if pub.get("id") else "PUBLISH_FAILED:" + str(pub))
     else:
-        print("CREATE_FAILED_NO_IMAGE:" + str(result))
+        # 画像付き作成失敗→テキストのみで再試行
+        if image_url:
+            result2 = create_thread(post_text, None)
+            if "id" in result2:
+                time.sleep(5)
+                pub2 = publish_thread(result2["id"])
+                print("SUCCESS_TEXT_ONLY" if pub2.get("id") else "FAILED:" + str(pub2))
+            else:
+                print("CREATE_FAILED:" + str(result2))
+        else:
+            print("CREATE_FAILED:" + str(result))
