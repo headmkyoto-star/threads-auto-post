@@ -57,14 +57,15 @@ def get_season():
         return "冬"
 
 def get_image_url():
-    try:
-        r = requests.get(GITHUB_API_IMAGES, timeout=10)
-        files = r.json()
-        images = [f["name"] for f in files if f["name"].lower().endswith((".jpg",".jpeg",".png"))]
-        if images:
-            return GITHUB_RAW_BASE + random.choice(images).replace(" ", "%20")
-    except:
-        pass
+    for _ in range(3):
+        try:
+            r = requests.get(GITHUB_API_IMAGES, timeout=10)
+            files = r.json()
+            images = [f["name"] for f in files if f["name"].lower().endswith((".jpg",".jpeg",".png"))]
+            if images:
+                return GITHUB_RAW_BASE + random.choice(images).replace(" ", "%20")
+        except:
+            time.sleep(2)
     return None
 
 def generate_post():
@@ -141,7 +142,7 @@ def generate_post():
 ・真面目すぎない ちょっとゆるくてOK
 ・「わかる～」「それな！」って思わせる共感か、くすっと笑える内容にする
 ・最後はコメントしたくなる問いかけで終わる
-・絵文字は🩷🫶🥹🌸✨🫧☺️💗🤍🫰など可愛い系のみ（1〜2個）
+・絵文字は🩷🫶🥹🌸✨🫧☺️💗🤍🫰など可愛い系のみ（2〜3個）
 ・「。」「、」は使わない
 ・朝/昼/夕/夜/何時など時間に関する表現は一切使わない
 ・季節に関する表現は基本的に使わない。どうしても使う場合のみ現在の季節「{season}」に合わせる
@@ -172,11 +173,22 @@ if __name__ == "__main__":
         time.sleep(30)
         pub = publish_thread(result["id"])
         print("SUCCESS" if pub.get("id") else "PUBLISH_FAILED:" + str(pub))
-    else:
-        result2 = create_thread(post_text, None)
+    elif image_url:
+        # 画像付きが失敗→もう1回リトライ
+        time.sleep(5)
+        result2 = create_thread(post_text, image_url)
         if "id" in result2:
             time.sleep(30)
             pub2 = publish_thread(result2["id"])
-            print("SUCCESS" if pub2.get("id") else "FAILED:" + str(pub2))
+            print("SUCCESS" if pub2.get("id") else "PUBLISH_FAILED2:" + str(pub2))
         else:
-            print("CREATE_FAILED:" + str(result2))
+            # それでも失敗→テキストのみ
+            result3 = create_thread(post_text, None)
+            if "id" in result3:
+                time.sleep(30)
+                pub3 = publish_thread(result3["id"])
+                print("SUCCESS_TEXT_ONLY" if pub3.get("id") else "FAILED:" + str(pub3))
+            else:
+                print("CREATE_FAILED:" + str(result3))
+    else:
+        print("CREATE_FAILED_NO_IMAGE:" + str(result))
