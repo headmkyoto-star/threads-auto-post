@@ -57,15 +57,25 @@ def get_season():
         return "冬"
 
 def get_image_url():
-    for _ in range(3):
+    for attempt in range(3):
         try:
             r = requests.get(GITHUB_API_IMAGES, timeout=10)
+            print("IMAGE_API_STATUS:" + str(r.status_code))
             files = r.json()
-            images = [f["name"] for f in files if f["name"].lower().endswith((".jpg",".jpeg",".png"))]
-            if images:
-                return GITHUB_RAW_BASE + random.choice(images).replace(" ", "%20")
-        except:
+            if isinstance(files, list):
+                images = [f["name"] for f in files if f["name"].lower().endswith((".jpg",".jpeg",".png"))]
+                print("IMAGE_COUNT:" + str(len(images)))
+                if images:
+                    chosen = random.choice(images)
+                    url = GITHUB_RAW_BASE + chosen.replace(" ", "%20")
+                    print("IMAGE_CHOSEN:" + chosen[:40])
+                    return url
+            else:
+                print("IMAGE_API_ERROR:" + str(files)[:100])
+        except Exception as e:
+            print("IMAGE_EXCEPTION:" + str(e)[:80])
             time.sleep(2)
+    print("GET_IMAGE_FAILED")
     return None
 
 def generate_post():
@@ -163,15 +173,20 @@ def create_thread(text, image_url=None):
 
 def check_container_status(creation_id):
     url = "https://graph.threads.net/v1.0/" + creation_id
-    for _ in range(10):
-        r = requests.get(url, params={"fields": "status,error_code", "access_token": ACCESS_TOKEN}, timeout=10).json()
-        status = r.get("status", "")
-        if status == "FINISHED":
-            return True
-        if status == "ERROR":
-            print("CONTAINER_ERROR:" + str(r.get("error_code")))
-            return False
+    for i in range(15):
+        try:
+            r = requests.get(url, params={"fields": "status,error_code", "access_token": ACCESS_TOKEN}, timeout=10).json()
+            status = r.get("status", "UNKNOWN")
+            print("CONTAINER_STATUS_" + str(i+1) + ":" + status)
+            if status == "FINISHED":
+                return True
+            if status == "ERROR":
+                print("CONTAINER_ERROR:" + str(r.get("error_code")))
+                return False
+        except Exception as e:
+            print("STATUS_CHECK_ERR:" + str(e)[:50])
         time.sleep(5)
+    print("CONTAINER_TIMEOUT")
     return False
 
 def publish_thread(creation_id):
@@ -182,13 +197,17 @@ if __name__ == "__main__":
     post_text = generate_post()
     print("GENERATED_OK")
     image_url = get_image_url()
+    print("IMAGE_URL:" + ("OK" if image_url else "NONE"))
+    used_image = False
     result = create_thread(post_text, image_url)
     if "id" in result:
         container_id = result["id"]
         if image_url:
             # 画像の読み込みが完了するまで待つ
             ready = check_container_status(container_id)
-            if not ready:
+            if ready:
+                used_image = True
+            else:
                 # 画像NGなのでテキストのみで再作成
                 result = create_thread(post_text, None)
                 if "id" not in result:
@@ -197,7 +216,10 @@ if __name__ == "__main__":
                 container_id = result["id"]
         time.sleep(5)
         pub = publish_thread(container_id)
-        print("SUCCESS" if pub.get("id") else "PUBLISH_FAILED:" + str(pub))
+        if pub.get("id"):
+            print("SUCCESS_WITH_IMAGE" if used_image else "SUCCESS_TEXT_ONLY")
+        else:
+            print("PUBLISH_FAILED:" + str(pub))
     else:
         # 画像付き作成失敗→テキストのみで再試行
         if image_url:
