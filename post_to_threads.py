@@ -171,23 +171,11 @@ def create_thread(text, image_url=None):
         params["image_url"] = image_url
     return requests.post(url, params=params, timeout=30).json()
 
-def check_container_status(creation_id):
-    url = "https://graph.threads.net/v1.0/" + creation_id
-    for i in range(15):
-        try:
-            r = requests.get(url, params={"fields": "status,error_code", "access_token": ACCESS_TOKEN}, timeout=10).json()
-            status = r.get("status", "UNKNOWN")
-            print("CONTAINER_STATUS_" + str(i+1) + ":" + status)
-            if status == "FINISHED":
-                return True
-            if status == "ERROR":
-                print("CONTAINER_ERROR:" + str(r.get("error_code")))
-                return False
-        except Exception as e:
-            print("STATUS_CHECK_ERR:" + str(e)[:50])
-        time.sleep(5)
-    print("CONTAINER_TIMEOUT")
-    return False
+def wait_for_image(creation_id):
+    # Threads APIのステータス確認が動作しないため固定待機
+    print("IMAGE_WAIT:30s")
+    time.sleep(30)
+    return True
 
 def publish_thread(creation_id):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads_publish"
@@ -203,23 +191,23 @@ if __name__ == "__main__":
     if "id" in result:
         container_id = result["id"]
         if image_url:
-            # 画像の読み込みが完了するまで待つ
-            ready = check_container_status(container_id)
-            if ready:
-                used_image = True
-            else:
-                # 画像NGなのでテキストのみで再作成
-                result = create_thread(post_text, None)
-                if "id" not in result:
-                    print("CREATE_FAILED:" + str(result))
-                    exit(1)
-                container_id = result["id"]
-        time.sleep(5)
+            # 画像処理完了まで待機
+            wait_for_image(container_id)
+            used_image = True
+        else:
+            time.sleep(5)
         pub = publish_thread(container_id)
         if pub.get("id"):
             print("SUCCESS_WITH_IMAGE" if used_image else "SUCCESS_TEXT_ONLY")
         else:
-            print("PUBLISH_FAILED:" + str(pub))
+            # publish失敗→テキストのみで再試行
+            print("PUBLISH_FAILED_IMG:" + str(pub))
+            if image_url:
+                result2 = create_thread(post_text, None)
+                if "id" in result2:
+                    time.sleep(5)
+                    pub2 = publish_thread(result2["id"])
+                    print("SUCCESS_TEXT_ONLY" if pub2.get("id") else "FAILED:" + str(pub2))
     else:
         # 画像付き作成失敗→テキストのみで再試行
         if image_url:
