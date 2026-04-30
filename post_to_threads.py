@@ -111,8 +111,7 @@ def get_media():
         print("VIDEO_FETCH_ERROR:" + str(e)[:60])
     if not media_pool:
         return None
-    videos = [m for m in media_pool if m["type"] == "VIDEO"]
-    chosen = random.choice(videos) if videos else random.choice(media_pool)
+    chosen = random.choice(media_pool)
     print("MEDIA_CHOSEN:" + chosen["type"] + ":" + chosen["url"].split("/")[-1][:40])
     return chosen
 
