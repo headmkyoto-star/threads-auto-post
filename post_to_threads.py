@@ -10,6 +10,8 @@ USER_ID = "27185017111098955"
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 GITHUB_RAW_BASE = "https://raw.githubusercontent.com/headmkyoto-star/threads-auto-post/main/images/"
 GITHUB_API_IMAGES = "https://api.github.com/repos/headmkyoto-star/threads-auto-post/contents/images"
+GITHUB_API_VIDEOS = "https://api.github.com/repos/headmkyoto-star/threads-auto-post/contents/videos"
+GITHUB_RAW_VIDEOS = "https://raw.githubusercontent.com/headmkyoto-star/threads-auto-post/main/videos/"
 
 DAILY_THEMES = [
     # 体の疲れ・感覚系
@@ -86,6 +88,32 @@ def get_image_url():
             time.sleep(2)
     print("GET_IMAGE_FAILED")
     return None
+
+def get_media():
+    media_pool = []
+    for attempt in range(3):
+        try:
+            r = requests.get(GITHUB_API_IMAGES, timeout=10)
+            if r.status_code == 200 and isinstance(r.json(), list):
+                for f in r.json():
+                    if f["name"].lower().endswith((".jpg",".jpeg",".png")):
+                        media_pool.append({"url": GITHUB_RAW_BASE + f["name"].replace(" ","%20"), "type": "IMAGE"})
+                break
+        except Exception as e:
+            time.sleep(2)
+    try:
+        r = requests.get(GITHUB_API_VIDEOS, timeout=10)
+        if r.status_code == 200 and isinstance(r.json(), list):
+            for f in r.json():
+                if f["name"].lower().endswith((".mp4",".mov")):
+                    media_pool.append({"url": GITHUB_RAW_VIDEOS + f["name"].replace(" ","%20"), "type": "VIDEO"})
+    except Exception as e:
+        print("VIDEO_FETCH_ERROR:" + str(e)[:60])
+    if not media_pool:
+        return None
+    chosen = random.choice(media_pool)
+    print("MEDIA_CHOSEN:" + chosen["type"] + ":" + chosen["url"].split("/")[-1][:40])
+    return chosen
 
 def generate_post():
     key_preview = ANTHROPIC_API_KEY[:20] if ANTHROPIC_API_KEY else "EMPTY"
@@ -196,11 +224,14 @@ def generate_post():
 
         return call_claude(prompt_text, max_tokens=300)
 
-def create_thread(text, image_url=None):
+def create_thread(text, media=None):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads"
-    params = {"media_type": "IMAGE" if image_url else "TEXT", "text": text, "access_token": ACCESS_TOKEN}
-    if image_url:
-        params["image_url"] = image_url
+    media_type = media["type"] if media else "TEXT"
+    params = {"media_type": media_type, "text": text, "access_token": ACCESS_TOKEN}
+    if media and media["type"] == "IMAGE":
+        params["image_url"] = media["url"]
+    elif media and media["type"] == "VIDEO":
+        params["video_url"] = media["url"]
     return requests.post(url, params=params, timeout=30).json()
 
 def wait_for_image(creation_id):
@@ -216,21 +247,22 @@ def publish_thread(creation_id):
 if __name__ == "__main__":
     post_text = generate_post()
     print("GENERATED_OK")
-    image_url = get_image_url()
-    print("IMAGE_URL:" + ("OK" if image_url else "NONE"))
-    used_image = False
-    result = create_thread(post_text, image_url)
+    media = get_media()
+    print("MEDIA:" + (media["type"] if media else "NONE"))
+    used_media = False
+    result = create_thread(post_text, media)
     if "id" in result:
         container_id = result["id"]
-        if image_url:
-            # 画像処理完了まで待機
-            wait_for_image(container_id)
-            used_image = True
+        if media:
+            wait_secs = 60 if media["type"] == "VIDEO" else 30
+            print(f"WAIT:{wait_secs}s for {media['type']}")
+            time.sleep(wait_secs)
+            used_media = True
         else:
             time.sleep(5)
         pub = publish_thread(container_id)
         if pub.get("id"):
-            print("SUCCESS_WITH_IMAGE" if used_image else "SUCCESS_TEXT_ONLY")
+            print("SUCCESS_WITH_IMAGE" if used_media else "SUCCESS_TEXT_ONLY")
         else:
             # publish失敗→テキストのみで再試行
             print("PUBLISH_FAILED_IMG:" + str(pub))
