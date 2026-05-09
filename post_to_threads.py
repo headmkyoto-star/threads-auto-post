@@ -139,14 +139,15 @@ def get_image_url():
     return None
 
 def get_media():
-    media_pool = []
+    images_pool = []
+    videos_pool = []
     for attempt in range(3):
         try:
             r = requests.get(GITHUB_API_IMAGES, timeout=10)
             if r.status_code == 200 and isinstance(r.json(), list):
                 for f in r.json():
                     if f["name"].lower().endswith((".jpg",".jpeg",".png")):
-                        media_pool.append({"url": GITHUB_RAW_BASE + f["name"].replace(" ","%20"), "type": "IMAGE"})
+                        images_pool.append({"url": GITHUB_RAW_BASE + f["name"].replace(" ","%20"), "type": "IMAGE"})
                 break
         except Exception as e:
             time.sleep(2)
@@ -155,9 +156,17 @@ def get_media():
         if r.status_code == 200 and isinstance(r.json(), list):
             for f in r.json():
                 if f["name"].lower().endswith((".mp4",".mov")):
-                    media_pool.append({"url": GITHUB_RAW_VIDEOS + f["name"].replace(" ","%20"), "type": "VIDEO"})
+                    videos_pool.append({"url": GITHUB_RAW_VIDEOS + f["name"].replace(" ","%20"), "type": "VIDEO"})
     except Exception as e:
         print("VIDEO_FETCH_ERROR:" + str(e)[:60])
+    # 13時は動画優先（動画がなければ画像にフォールバック）
+    jst = datetime.timezone(datetime.timedelta(hours=9))
+    hour = datetime.datetime.now(jst).hour
+    if hour == 13 and videos_pool:
+        chosen = random.choice(videos_pool)
+        print("MEDIA_CHOSEN:13H_VIDEO:" + chosen["url"].split("/")[-1][:40])
+        return chosen
+    media_pool = images_pool + videos_pool
     if not media_pool:
         return None
     chosen = random.choice(media_pool)
