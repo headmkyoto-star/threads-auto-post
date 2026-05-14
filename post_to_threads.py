@@ -139,33 +139,58 @@ def get_image_url():
     return None
 
 def get_media():
+    """画像・動画リストをGitHub APIから取得。GitHub認証で5000req/hourに拡大"""
     images_pool = []
     videos_pool = []
+    GH_TOKEN = os.environ.get("GH_TOKEN", "")
+    api_headers = {"Authorization": "token " + GH_TOKEN} if GH_TOKEN else {}
+    # 画像取得（最大3回リトライ）
     for attempt in range(3):
         try:
-            r = requests.get(GITHUB_API_IMAGES, timeout=10)
+            r = requests.get(GITHUB_API_IMAGES, headers=api_headers, timeout=10)
+            print("IMAGE_API_STATUS:" + str(r.status_code))
             if r.status_code == 200 and isinstance(r.json(), list):
                 for f in r.json():
                     if f["name"].lower().endswith((".jpg",".jpeg",".png")):
                         images_pool.append({"url": GITHUB_RAW_BASE + f["name"].replace(" ","%20"), "type": "IMAGE"})
+                print("IMAGE_COUNT:" + str(len(images_pool)))
                 break
+            elif r.status_code == 403:
+                print("IMAGE_API_RATELIMIT:" + str(r.json())[:100])
+            else:
+                print("IMAGE_API_ERROR:" + str(r.json())[:100])
         except Exception as e:
-            time.sleep(2)
-    try:
-        r = requests.get(GITHUB_API_VIDEOS, timeout=10)
-        if r.status_code == 200 and isinstance(r.json(), list):
-            for f in r.json():
-                if f["name"].lower().endswith((".mp4",".mov")):
-                    videos_pool.append({"url": GITHUB_RAW_VIDEOS + f["name"].replace(" ","%20"), "type": "VIDEO"})
-    except Exception as e:
-        print("VIDEO_FETCH_ERROR:" + str(e)[:60])
-    # 13時は動画優先（動画がなければ画像にフォールバック）
+            print("IMAGE_EXCEPTION:" + str(e)[:80])
+        time.sleep(2)
+    # 動画取得（最大3回リトライ）
+    for attempt in range(3):
+        try:
+            r = requests.get(GITHUB_API_VIDEOS, headers=api_headers, timeout=10)
+            print("VIDEO_API_STATUS:" + str(r.status_code))
+            if r.status_code == 200 and isinstance(r.json(), list):
+                for f in r.json():
+                    if f["name"].lower().endswith((".mp4",".mov")):
+                        videos_pool.append({"url": GITHUB_RAW_VIDEOS + f["name"].replace(" ","%20"), "type": "VIDEO"})
+                print("VIDEO_COUNT:" + str(len(videos_pool)))
+                break
+            elif r.status_code == 403:
+                print("VIDEO_API_RATELIMIT:" + str(r.json())[:100])
+            else:
+                print("VIDEO_API_ERROR:" + str(r.json())[:100])
+        except Exception as e:
+            print("VIDEO_EXCEPTION:" + str(e)[:80])
+        time.sleep(2)
+    # 13時は動画必須（取れなかったら例外→shell側の再試行へ）
     jst = datetime.timezone(datetime.timedelta(hours=9))
     hour = datetime.datetime.now(jst).hour
-    if hour == 13 and videos_pool:
-        chosen = random.choice(videos_pool)
-        print("MEDIA_CHOSEN:13H_VIDEO:" + chosen["url"].split("/")[-1][:40])
-        return chosen
+    if hour == 13:
+        if videos_pool:
+            chosen = random.choice(videos_pool)
+            print("MEDIA_CHOSEN:13H_VIDEO:" + chosen["url"].split("/")[-1][:40])
+            return chosen
+        else:
+            raise RuntimeError("13H_VIDEO_REQUIRED_BUT_NONE_FOUND")
+    # その他の時間: 画像・動画ランダム
     media_pool = images_pool + videos_pool
     if not media_pool:
         return None
