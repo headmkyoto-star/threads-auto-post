@@ -325,7 +325,7 @@ def generate_post():
 def create_thread(text, media=None):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads"
     media_type = media["type"] if media else "TEXT"
-    params = {"media_type": media_type, "text": text, "topic_tag": "ヘッドミント", "access_token": ACCESS_TOKEN}
+    params = {"media_type": media_type, "text": text, "access_token": ACCESS_TOKEN}
     if media and media["type"] == "IMAGE":
         params["image_url"] = media["url"]
     elif media and media["type"] == "VIDEO":
