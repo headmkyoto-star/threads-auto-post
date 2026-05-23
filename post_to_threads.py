@@ -191,13 +191,13 @@ def get_media():
     # 13時は動画必須（取れなかったら例外→shell側の再試行へ）
     jst = datetime.timezone(datetime.timedelta(hours=9))
     hour = datetime.datetime.now(jst).hour
-    if hour == 13:
+    if hour in (9, 17, 21):
         if videos_pool:
             chosen = random.choice(videos_pool)
             print("MEDIA_CHOSEN:13H_VIDEO:" + chosen["url"].split("/")[-1][:40])
             return chosen
         else:
-            raise RuntimeError("13H_VIDEO_REQUIRED_BUT_NONE_FOUND")
+            raise RuntimeError(f"{hour}H_VIDEO_REQUIRED_BUT_NONE_FOUND")
     # その他の時間: 画像・動画ランダム
     media_pool = images_pool + videos_pool
     if not media_pool:
