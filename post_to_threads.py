@@ -194,7 +194,7 @@ def get_media():
     if hour in (9, 17, 21):
         if videos_pool:
             chosen = random.choice(videos_pool)
-            print("MEDIA_CHOSEN:13H_VIDEO:" + chosen["url"].split("/")[-1][:40])
+            print(f"MEDIA_CHOSEN:{hour}H_VIDEO:" + chosen["url"].split("/")[-1][:40])
             return chosen
         else:
             raise RuntimeError(f"{hour}H_VIDEO_REQUIRED_BUT_NONE_FOUND")
