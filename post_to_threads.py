@@ -191,7 +191,7 @@ def get_media():
     # 13時は動画必須（取れなかったら例外→shell側の再試行へ）
     jst = datetime.timezone(datetime.timedelta(hours=9))
     hour = datetime.datetime.now(jst).hour
-    if hour in (9, 17, 21):
+    if hour in (7, 17, 21):
         if videos_pool:
             chosen = random.choice(videos_pool)
             print(f"MEDIA_CHOSEN:{hour}H_VIDEO:" + chosen["url"].split("/")[-1][:40])
@@ -231,7 +231,7 @@ def generate_post():
         )
         return resp.json()["content"][0]["text"].strip()
 
-    if hour == 9:
+    if hour == 7:
         prompt_text = """ヘッドミント京都祇園店のセラピストとして、以下の投稿の続きに追加する一言を書いてください。
 
 【投稿の書き出し（固定）】
@@ -251,6 +251,7 @@ def generate_post():
 ・一人称は省略するか「私」のみ。投稿者は若い女性セラピスト設定（「またあなたに来たい」などNG。「また来たい」「またお願いしたい」のように自然に言い換える）
 ・施術名は「ヘッドスパ」ではなく必ず「ドライヘッドスパ」と書く
 ・ハッシュタグなし
+・3回に1回程度、追加する一言の中に「ヘッドミント京都祇園店」を1回だけ自然に含める。1投稿内で「ヘッドミント京都祇園店」を2回以上使うのは絶対禁止。不自然な組み合わせ・無理やりな挿入もNG
 ・追加する一言だけ出力（書き出しは繰り返さない）"""
         return PROMO_OPENING_A + "\n" + call_claude(prompt_text)
 
@@ -269,6 +270,7 @@ def generate_post():
 ・時間に関する表現は一切使わない
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし
+・3回に1回程度、追加する一言の中に「ヘッドミント京都祇園店」を1回だけ自然に含める。1投稿内で「ヘッドミント京都祇園店」を2回以上使うのは絶対禁止。不自然な組み合わせ・無理やりな挿入もNG
 ・追加する一言だけ出力（書き出しは繰り返さない）"""
         return PROMO_OPENING_B + "\n" + call_claude(prompt_text)
 
@@ -277,7 +279,7 @@ def generate_post():
         style = random.choice(POST_STYLES)
         print("STYLE_CHOSEN:" + style["name"])
         print("THEME_CHOSEN:" + theme[:40])
-        prompt_text = f"""京都祇園にあるドライヘッドスパ店「ヘッドミント」のセラピストとして、Threadsに投稿する文を1つ書いて。店には複数のセラピストがいて、毎回違うスタッフが投稿している設定。
+        prompt_text = f"""京都祇園にあるドライヘッドスパ店「ヘッドミント京都祇園店」のセラピストとして、Threadsに投稿する文を1つ書いて。店には複数のセラピストがいて、毎回違うスタッフが投稿している設定。
 
 テーマ:「{theme}」
 
@@ -316,6 +318,7 @@ def generate_post():
 ・「完全個室」「ヘッドセラピー」は使わない
 ・ハッシュタグなし・文と文の間は改行
 ・1文を途中で改行しない。改行は必ず絵文字の直後（文と文の間）だけ。詩のように1行1フレーズに切る書き方は絶対にしない
+・3回に1回程度、追加する一言の中に「ヘッドミント京都祇園店」を1回だけ自然に含める。1投稿内で「ヘッドミント京都祇園店」を2回以上使うのは絶対禁止。不自然な組み合わせ・無理やりな挿入もNG
 ・投稿文だけ出力"""
 
         return call_claude(prompt_text, max_tokens=200)
