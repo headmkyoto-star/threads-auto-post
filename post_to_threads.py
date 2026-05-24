@@ -366,7 +366,7 @@ if __name__ == "__main__":
         else:
             # publish失敗→テキストのみで再試行
             print("PUBLISH_FAILED_IMG:" + str(pub))
-            if image_url:
+            if media:
                 result2 = create_thread(post_text, None)
                 if "id" in result2:
                     time.sleep(5)
@@ -374,7 +374,7 @@ if __name__ == "__main__":
                     print("SUCCESS_TEXT_ONLY" if pub2.get("id") else "FAILED:" + str(pub2))
     else:
         # 画像付き作成失敗→テキストのみで再試行
-        if image_url:
+        if media:
             result2 = create_thread(post_text, None)
             if "id" in result2:
                 time.sleep(5)
