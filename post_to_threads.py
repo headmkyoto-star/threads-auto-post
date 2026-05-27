@@ -4,6 +4,7 @@ import random
 import time
 import datetime
 import json
+import re
 
 ACCESS_TOKEN = os.environ.get("THREADS_ACCESS_TOKEN", "")
 USER_ID = "27185017111098955"
@@ -12,6 +13,34 @@ GITHUB_RAW_BASE = "https://raw.githubusercontent.com/headmkyoto-star/threads-aut
 GITHUB_API_IMAGES = "https://api.github.com/repos/headmkyoto-star/threads-auto-post/contents/images"
 GITHUB_API_VIDEOS = "https://api.github.com/repos/headmkyoto-star/threads-auto-post/contents/videos"
 GITHUB_RAW_VIDEOS = "https://raw.githubusercontent.com/headmkyoto-star/threads-auto-post/main/videos/"
+
+# ===== 改行安定化（投稿直前に文の区切りで必ず改行を入れ直す） =====
+# 絵文字とみなすコードポイント範囲（ZWJ・異体字セレクタ・肌色修飾も1まとまり扱い）
+_EMOJI_RANGE = (
+    "\U0001F300-\U0001FAFF"  # 記号・絵文字・補助シンボル
+    "\U00002600-\U000027BF"  # 雑記号・装飾
+    "\U00002300-\U000023FF"  # 技術記号（⏰など）
+    "\U00002B00-\U00002BFF"  # 矢印・星
+    "\U0001F1E6-\U0001F1FF"  # 国旗
+    "️‍"           # 異体字セレクタ・ZWJ
+    "\U0001F3FB-\U0001F3FF"  # 肌色修飾
+    "♀♂❤⃣™ℹ⁉‼©®"
+)
+
+def normalize_linebreaks(text):
+    """絵文字の連なりの直後に本文が続く箇所（＝文の区切り）で必ず改行を入れる。
+    連続絵文字は分割しない。既に改行済み・1文のみの投稿は壊さない。"""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    emoji_run = "[" + _EMOJI_RANGE + "]+"
+    text = re.sub(
+        "(" + emoji_run + ")[ 　]*(?=[^" + _EMOJI_RANGE + "\\s])",
+        lambda m: m.group(1) + "\n",
+        text,
+    )
+    lines = [ln.strip() for ln in text.split("\n")]
+    lines = [ln for ln in lines if ln != ""]
+    return "\n".join(lines)
+# ==================================================================
 
 DAILY_THEMES = [
     # 体の疲れ・感覚系
@@ -346,6 +375,7 @@ def publish_thread(creation_id):
 if __name__ == "__main__":
     post_text = generate_post()
     post_text = post_text.replace("「", "").replace("」", "")
+    post_text = normalize_linebreaks(post_text)
     print("GENERATED_OK")
     media = get_media()
     print("MEDIA:" + (media["type"] if media else "NONE"))
