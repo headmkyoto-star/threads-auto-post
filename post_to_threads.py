@@ -404,6 +404,12 @@ if __name__ == "__main__":
     print("MEDIA:" + (media["type"] if media else "NONE"))
     used_media = False
     result = create_thread(post_text, media)
+    if media and "id" not in result:
+        print("CREATE_MEDIA_FAILED:" + str(result)[:300])
+        time.sleep(10)
+        result = create_thread(post_text, media)
+        if "id" not in result:
+            print("CREATE_MEDIA_RETRY_FAILED:" + str(result)[:300])
     if "id" in result:
         container_id = result["id"]
         if media:
