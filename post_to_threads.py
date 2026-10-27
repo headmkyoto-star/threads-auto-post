@@ -393,7 +393,16 @@ def wait_for_image(creation_id):
 
 def publish_thread(creation_id):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads_publish"
-    return requests.post(url, params={"creation_id": creation_id, "access_token": ACCESS_TOKEN}, timeout=30).json()
+    r = requests.post(url, params={"creation_id": creation_id, "access_token": ACCESS_TOKEN}, timeout=30)
+    try:
+        body = r.json()
+    except Exception:
+        body = {}
+    print(f"📡 publish応答: {r.status_code} {str(body)[:300]}")
+    if r.status_code != 200:
+        # 200以外は投稿IDが返っていても成功扱いにしない
+        return {"error": body, "status_code": r.status_code}
+    return body
 
 if __name__ == "__main__":
     post_text = generate_post()
@@ -403,6 +412,7 @@ if __name__ == "__main__":
     media = get_media()
     print("MEDIA:" + (media["type"] if media else "NONE"))
     used_media = False
+    posted_id = None
     result = create_thread(post_text, media)
     if media and "id" not in result:
         print("CREATE_MEDIA_FAILED:" + str(result)[:300])
@@ -421,6 +431,7 @@ if __name__ == "__main__":
             time.sleep(5)
         pub = publish_thread(container_id)
         if pub.get("id"):
+            posted_id = pub.get("id")
             print("SUCCESS_WITH_IMAGE" if used_media else "SUCCESS_TEXT_ONLY")
         else:
             # publish失敗→テキストのみで再試行
@@ -430,6 +441,7 @@ if __name__ == "__main__":
                 if "id" in result2:
                     time.sleep(5)
                     pub2 = publish_thread(result2["id"])
+                    posted_id = pub2.get("id")
                     print("SUCCESS_TEXT_ONLY" if pub2.get("id") else "FAILED:" + str(pub2))
     else:
         # 画像付き作成失敗→テキストのみで再試行
@@ -438,8 +450,15 @@ if __name__ == "__main__":
             if "id" in result2:
                 time.sleep(5)
                 pub2 = publish_thread(result2["id"])
+                posted_id = pub2.get("id")
                 print("SUCCESS_TEXT_ONLY" if pub2.get("id") else "FAILED:" + str(pub2))
             else:
                 print("CREATE_FAILED:" + str(result2))
         else:
             print("CREATE_FAILED:" + str(result))
+
+    if posted_id:
+        print(f"✅ SUCCESS id={posted_id}")
+    else:
+        print("❌ FAILED: 投稿IDが返らなかったため失敗扱いにします")
+        exit(1)

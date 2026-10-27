@@ -23,7 +23,9 @@ jobs:
           LANG: en_US.UTF-8
         run: |
           for i in 1 2 3 4 5; do
-            python -X utf8 post_to_threads.py && break
+            python -X utf8 post_to_threads.py && exit 0
             echo "Attempt $i failed, waiting 30s..."
             sleep 30
           done
+          echo "❌ 5回とも投稿に失敗しました"
+          exit 1
