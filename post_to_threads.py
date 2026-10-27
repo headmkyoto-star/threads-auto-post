@@ -276,8 +276,7 @@ def get_media():
     return chosen
 
 def generate_post():
-    key_preview = ANTHROPIC_API_KEY[:20] if ANTHROPIC_API_KEY else "EMPTY"
-    print("API_KEY_PREVIEW:" + key_preview)
+    print("API_KEY:" + ("SET" if ANTHROPIC_API_KEY else "EMPTY"))
 
     jst = datetime.timezone(datetime.timedelta(hours=9))
     hour = datetime.datetime.now(jst).hour
@@ -391,6 +390,29 @@ def wait_for_image(creation_id):
     time.sleep(30)
     return True
 
+def wait_for_video(creation_id):
+    # 動画は処理完了（FINISHED）まで確認してから公開する（最大5分）
+    for i in range(30):
+        time.sleep(10)
+        try:
+            data = requests.get(
+                "https://graph.threads.net/v1.0/" + creation_id,
+                params={"fields": "status,error_message", "access_token": ACCESS_TOKEN},
+                timeout=30,
+            ).json()
+        except Exception as e:
+            print(f"VIDEO_STATUS_CHECK_ERROR:{e}")
+            continue
+        status = data.get("status", "")
+        print(f"VIDEO_STATUS ({i+1}/30): {status}")
+        if status == "FINISHED":
+            return True
+        if status == "ERROR":
+            print("VIDEO_ERROR:" + str(data.get("error_message", ""))[:300])
+            return False
+    print("VIDEO_WAIT_TIMEOUT:5min（公開を試みる）")
+    return False
+
 def publish_thread(creation_id):
     url = "https://graph.threads.net/v1.0/" + USER_ID + "/threads_publish"
     r = requests.post(url, params={"creation_id": creation_id, "access_token": ACCESS_TOKEN}, timeout=30)
@@ -423,9 +445,11 @@ if __name__ == "__main__":
     if "id" in result:
         container_id = result["id"]
         if media:
-            wait_secs = 60 if media["type"] == "VIDEO" else 30
-            print(f"WAIT:{wait_secs}s for {media['type']}")
-            time.sleep(wait_secs)
+            if media["type"] == "VIDEO":
+                wait_for_video(container_id)
+            else:
+                print("WAIT:30s for IMAGE")
+                time.sleep(30)
             used_media = True
         else:
             time.sleep(5)
